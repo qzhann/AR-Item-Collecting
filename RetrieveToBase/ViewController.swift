@@ -14,6 +14,7 @@ import SwiftUI
 class ViewController: UIViewController, ARSCNViewDelegate {
     
     weak var game: Game!
+    var gameNodes: [SCNNode] = []
 
     @IBOutlet var sceneView: ARSCNView!
     
@@ -26,12 +27,14 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         let scene = SCNScene()
         sceneView.scene = scene
         scene.physicsWorld.gravity = SCNVector3(0, 0, 0)
+        scene.physicsWorld.contactDelegate = self
         sceneView.autoenablesDefaultLighting = true
         sceneView.debugOptions = [.showFeaturePoints, .showWorldOrigin]
         
         // game object set up
         self.game = Game.currrent
         self.game.touchDelegate = self
+        self.game.gameDelegate = self
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -43,11 +46,12 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         // Run the view's session
         sceneView.session.run(configuration)
         
-        addBase()
+        // add walls
+        addWalls(scale: 0.5)
         
-        addSatellite()
-        
-        addWalls()
+        // trigger level change
+        gameLevelChanged()
+
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -57,45 +61,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         sceneView.session.pause()
     }
     
-    func addBase() {
-        let baseNode = SCNNode()
-        
-        let radius: CGFloat = 0.1
-        // geometry
-        let baseGeometry = SCNSphere(radius: radius)
-        baseNode.geometry = baseGeometry
-        baseGeometry.firstMaterial?.diffuse.contents = UIColor.baseColor
-        
-        // physics
-        let physicsBody = SCNPhysicsBody(type: .static, shape: SCNPhysicsShape(geometry: SCNSphere(radius: radius), options: nil))
-        baseNode.physicsBody = physicsBody
-        
-        sceneView.scene.rootNode.addChildNode(baseNode)
-    }
-    
-    func addSatellite(at position: SCNVector3 = SCNVector3(0.1, 0.2, -0.5)) {
-        let satelliteNode = SCNNode()
-        
-        let radius: CGFloat = 0.05
-        
-        // geometry
-        let satelliteGeometry = SCNSphere(radius: radius)
-        satelliteNode.geometry = satelliteGeometry
-        satelliteGeometry.firstMaterial?.diffuse.contents = UIColor.satelliteColor
-        satelliteGeometry.name = "inner ball"
-                
-        // position
-        satelliteNode.position = position
-        
-        // physics
-        let physicsBody = SCNPhysicsBody(type: .dynamic, shape: SCNPhysicsShape(geometry: SCNSphere(radius: radius), options: [SCNPhysicsShape.Option.collisionMargin: 0.01]))
-        satelliteNode.physicsBody = physicsBody
-        physicsBody.restitution = 0.9
-                
-        sceneView.scene.rootNode.addChildNode(satelliteNode)
-    }
-    
-    func addWalls() {
+    func addWalls(scale: Float = 1) {
         let topWallNode = SCNNode()
         let bottomWallNode = SCNNode()
         let leftWallNode = SCNNode()
@@ -104,14 +70,16 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         let backWallNode = SCNNode()
         
         let wallNodes = [topWallNode, bottomWallNode, leftWallNode, rightWallNode, frontWallNode, backWallNode]
+        wallNodes.forEach { $0.opacity = 0 }
+        wallNodes.forEach { $0.name = "wall" }
 
         let wallThickness: Float = 0.05
-        let distanceToTop: Float = 0.3
-        let distanceToBottom: Float = 0.6
-        let distanceToFront: Float = 2
-        let distanceToBack: Float = 2
-        let distanceToLeft: Float = 2
-        let distanceToRight: Float = 2
+        let distanceToTop: Float = 0.3 * scale
+        let distanceToBottom: Float = 0.6 * scale
+        let distanceToFront: Float = 2 * scale
+        let distanceToBack: Float = 2 * scale
+        let distanceToLeft: Float = 2 * scale
+        let distanceToRight: Float = 2 * scale
         let leftRightDistance = distanceToLeft + distanceToRight
         let topBottomDistance = distanceToTop + distanceToBottom
         let frontBackDistance = distanceToFront + distanceToBack
@@ -123,8 +91,8 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         let wallGeometries = [topBottomWallGeometry, frontBackWallGeometry, leftRightWallGeometry]
         for wallGeometry in wallGeometries {
             wallGeometry.firstMaterial?.diffuse.contents = UIColor.wallColor
-            wallGeometry.firstMaterial?.transparency = 1
         }
+        
         topWallNode.geometry = topBottomWallGeometry
         bottomWallNode.geometry = topBottomWallGeometry
         leftWallNode.geometry = leftRightWallGeometry
@@ -146,12 +114,14 @@ class ViewController: UIViewController, ARSCNViewDelegate {
             let physicsBody = SCNPhysicsBody(type: .static, shape: SCNPhysicsShape(geometry: wallNode.geometry!, options: nil))
             wallNode.physicsBody = physicsBody
             physicsBody.restitution = 0.9
+            physicsBody.contactTestBitMask = physicsBody.collisionBitMask
         }
         
         wallNodes.forEach { sceneView.scene.rootNode.addChildNode($0) }
     }
     
     func nodeTapped(_ node: SCNNode) {
+        
         guard let currentFrame = sceneView.session.currentFrame else { return }
         
         let power: Float = 1
@@ -161,36 +131,32 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         node.physicsBody?.applyForce(force, asImpulse: true)
     }
     
+    func objectdidBeginCollisionWithWall(_ wall: SCNNode) {
+        let collisionOpacity: CGFloat = 0.7
+        let defaultOpacity: CGFloat = 0.0
+        let rampUpOpacityDuration = 0.2
+        let rampDownOpacityDuration = 0.4
+        SCNTransaction.begin()
+        SCNTransaction.animationDuration = rampUpOpacityDuration
+        let opacityFadingAnimation = CABasicAnimation(keyPath: "opacity")
+        opacityFadingAnimation.duration = rampDownOpacityDuration
+        opacityFadingAnimation.fromValue = collisionOpacity
+        opacityFadingAnimation.toValue = defaultOpacity
+        SCNTransaction.completionBlock = {
+            wall.opacity = defaultOpacity
+            wall.addAnimation(opacityFadingAnimation, forKey: "opacity")
+        }
+        
+        wall.opacity = collisionOpacity
+        
+        SCNTransaction.commit()
+    }
+    
     
     @IBSegueAction func embed(_ coder: NSCoder) -> UIViewController? {
         let hostingController = UIHostingController(coder: coder, rootView: AROverlay())
         hostingController!.view.backgroundColor = .clear
         return hostingController
-    }
-    // MARK: - ARSCNViewDelegate
-    
-/*
-    // Override to create and configure nodes for anchors added to the view's session.
-    func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
-        let node = SCNNode()
-     
-        return node
-    }
-*/
-    
-    func session(_ session: ARSession, didFailWithError error: Error) {
-        // Present an error message to the user
-        
-    }
-    
-    func sessionWasInterrupted(_ session: ARSession) {
-        // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        
-    }
-    
-    func sessionInterruptionEnded(_ session: ARSession) {
-        // Reset tracking and/or remove existing anchors if consistent tracking is required
-        
     }
 }
 
@@ -204,23 +170,42 @@ extension ViewController: TouchDelegate {
         if let firstResult = hitTestResults.first {
             let node = firstResult.node
             if node.isInteractive {
-                print("tapped on node \(node)")
-            } else {
-                for result in hitTestResults {
-                    if result.node.geometry is SCNSphere {
-                        print("sphere found in results, but not first")
-                        print(result)
-                    } else {
-                        print(result)
-                    }
-                }
-                print("tapped on non-interactive element")
+                nodeTapped(node)
             }
-            nodeTapped(node)
-        } else {
-            print("no interactive node tapped")
+        }
+    }
+}
+
+// MARK: - Physics Contact delegate
+
+extension ViewController: SCNPhysicsContactDelegate {
+    func physicsWorld(_ world: SCNPhysicsWorld, didBegin contact: SCNPhysicsContact) {
+        
+        // wall collision
+        if contact.nodeA.name == "wall" || contact.nodeB.name == "wall" {
+            let wall = contact.nodeA.name == "wall" ? contact.nodeA : contact.nodeB
+            
+            objectdidBeginCollisionWithWall(wall)
         }
         
+        // collision with base
+        if contact.nodeA.name == "base" || contact.nodeB.name == "base" {
+            let satellite = (contact.nodeA.name == "base" ? contact.nodeB : contact.nodeA) as! SatelliteNode
+            
+            game.baseCollidesWithSatellite(satellite)
+        }
+    }
+}
+
+extension ViewController: GameDelegate {
+    func gameLevelChanged() {
+        
+        // remove the previous nodes
+        gameNodes.forEach { $0.removeFromParentNode() }
+        
+        // add the level nodes
+        game.allNodes.forEach { sceneView.scene.rootNode.addChildNode($0) }
+        gameNodes = game.allNodes
     }
 }
 
