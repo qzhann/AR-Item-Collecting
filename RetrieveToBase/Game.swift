@@ -51,15 +51,12 @@ class Level {
         self.totalSatelliteCount = totalSatelliteCount
         
         resetLevel()
-        
-        satellites.forEach { $0.geometry?.firstMaterial?.diffuse.contents = UIColor.defaultSatelliteColor }
-        satellites[0].geometry?.firstMaterial?.diffuse.contents = UIColor.nextSatelliteColor
     }
     
     func resetLevel() {
         // add base
         let baseNode = SCNNode()
-        let radius: CGFloat = 0.1
+        let radius: CGFloat = 0.3
         // geometry
         let baseGeometry = SCNSphere(radius: radius)
         baseNode.geometry = baseGeometry
@@ -81,7 +78,7 @@ class Level {
             if totalSatelliteCount == 1 {
                 position = SCNVector3(0, 0, 0.3)
             } else {
-                position = SCNVector3.randomForItemWithRadiusInRoom(itemRadius: Float(radius), scale: 0.5)
+                position = SCNVector3.randomForItemWithRadiusInRoom(itemRadius: Float(radius), scale: 1)
             }
             let radius: CGFloat = 0.05
             // geometry
@@ -100,6 +97,8 @@ class Level {
             satellites.append(satelliteNode)
         }
         allSatellites = satellites
+        
+        updateSatellitesInScene()
     }
     
     func correctSatelliteHit() {

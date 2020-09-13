@@ -29,7 +29,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         scene.physicsWorld.gravity = SCNVector3(0, 0, 0)
         scene.physicsWorld.contactDelegate = self
         sceneView.autoenablesDefaultLighting = true
-        sceneView.debugOptions = [.showFeaturePoints, .showWorldOrigin]
+        sceneView.debugOptions = [.showWorldOrigin]
         
         // game object set up
         self.game = Game.currrent
@@ -47,7 +47,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         sceneView.session.run(configuration)
         
         // add walls
-        addWalls(scale: 0.5)
+        addWalls(scale: 1)
         
         // trigger level change
         gameLevelChanged()
@@ -169,9 +169,7 @@ extension ViewController: TouchDelegate {
         
         if let firstResult = hitTestResults.first {
             let node = firstResult.node
-            if node.isInteractive {
-                nodeTapped(node)
-            }
+            nodeTapped(node)
         }
     }
 }
