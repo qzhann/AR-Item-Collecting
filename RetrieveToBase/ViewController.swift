@@ -180,7 +180,7 @@ extension ViewController: TouchDelegate {
         }
         
         // FIXME: Remove this
-//        game.currentLevel.correctSatelliteHit()
+        game.currentLevel.correctSatelliteHit()
     }
 }
 
@@ -212,6 +212,12 @@ extension ViewController: GameDelegate {
         
         // remove the previous nodes
         gameNodes.forEach { $0.removeFromParentNode() }
+        
+        for childNode in sceneView.scene.rootNode.childNodes {
+            childNode.removeFromParentNode()
+        }
+        
+        addWalls()
         
         // add the level nodes
         game.allNodes.forEach { sceneView.scene.rootNode.addChildNode($0) }

@@ -40,6 +40,7 @@ struct AROverlay: View {
             // actual content goes here
             VStack {
                 ZStack {
+                    gameStateOverlay
                     restartButton
                     titleLabel
                     
@@ -96,7 +97,6 @@ struct AROverlay: View {
         )
             .frame(width: 140)
     }
-    
     var restartButton: some View {
         VStack {
             HStack {
@@ -166,7 +166,82 @@ struct AROverlay: View {
         }
     .offset(x: 0, y: -30)
     }
+    var gameStateOverlay: some View {
+        VStack {
+            Spacer()
+            HStack {
+                ForEach<Range<Int>, Int, SatelliteView>(0..<game.currentLevel.totalSatelliteCount, id: \.self) { index in
+                    
+                    var discoverState: DiscoverState = .retrievd
+                    if let currentIndex = self.game.currentLevel.currentSatelliteIndex {
+                        if index == currentIndex {
+                            discoverState = .current
+                        } else if index < currentIndex {
+                            discoverState = .retrievd
+                        } else {
+                            discoverState = .future
+                        }
+                    }
+                    
+                    return SatelliteView(discoverState: discoverState)
+                    
+                }
+                Spacer()
+            }
+            .padding()
+            .padding(.bottom, 20)
+        }
+    }
     
+    
+}
+
+enum DiscoverState {
+    case retrievd
+    case current
+    case future
+}
+
+struct SatelliteView: View {
+    var discoverState: DiscoverState
+    var fillColor: Color {
+        switch discoverState {
+        case .retrievd:
+            return Color(.defaultSatelliteColor)
+        case .current:
+            return Color(.nextSatelliteColor)
+        case .future:
+            return Color.clear
+        }
+    }
+    var strokeColor: Color {
+        switch discoverState {
+        case .retrievd:
+            return Color(.clear)
+        case .current:
+            return Color(UIColor.nextSatelliteColor.withAlphaComponent(0.7))
+        case .future:
+            return Color(UIColor.nextSatelliteColor)
+        }
+    }
+    var body: some View {
+        ZStack {
+            Circle()
+                .strokeBorder(
+                    style: StrokeStyle(
+                        lineWidth: 2,
+                        dash: [4]
+                    )
+                )
+                .foregroundColor(strokeColor)
+                .frame(width: 20, height: 20)
+            
+            Circle()
+                .fill(fillColor)
+                .frame(width: 20, height: 20)
+        }
+        
+    }
 }
 
 struct BlurView: UIViewRepresentable {

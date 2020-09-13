@@ -31,8 +31,10 @@ enum LevelState {
 
 class Level {
     let totalSatelliteCount: Int
+    weak var game: Game?
     var levelState: LevelState = .currentSatellite(0) {
         didSet {
+            game?.objectWillChange.send()
             updateSatellitesInScene()
             switch levelState {
             case .completed:
@@ -236,7 +238,7 @@ class Level {
         return color
     }
     
-    private var currentSatelliteIndex: Int? {
+    var currentSatelliteIndex: Int? {
         switch self.levelState {
         case .completed:
             return nil
@@ -281,8 +283,9 @@ class Game: LevelCompletionDelegate, ObservableObject {
     weak var gameDelegate: GameDelegate?
         
     init() {
-        self.currentLevel = allLevels[0]
+        self.currentLevel = allLevels[2]
         self.allLevels.forEach{ $0.levelChangeDelegate = self }
+        self.allLevels.forEach{ $0.game = self }
     }
     
     func baseCollidesWithSatellite(_ satellite: SatelliteNode) {
