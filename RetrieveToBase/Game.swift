@@ -9,6 +9,8 @@
 import UIKit
 import SceneKit
 import Combine
+import SwiftUI
+
 
 protocol TouchDelegate: AnyObject {
     func touchReceived(at point: CGPoint)
@@ -42,6 +44,16 @@ class Level {
             }
         }
     }
+    var levelDescription: String {
+        switch totalSatelliteCount {
+        case 1:
+            return "Tutorial"
+        case 2:
+            return "Level 1"
+        default:
+            return "Level 2"
+        }
+    }
     var base: SCNNode!
     var allSatellites: [SCNNode] = []
     var satellites: [SCNNode] = []
@@ -54,8 +66,12 @@ class Level {
     }
     
     func resetLevel() {
+        // rest game state
+        levelState = .currentSatellite(0)
+        
         // add base
         let baseNode = SCNNode()
+        baseNode.opacity = 0.8
         let radius: CGFloat = 0.3
         // geometry
         let baseGeometry = SCNSphere(radius: radius)
@@ -120,7 +136,6 @@ class Level {
     func updateSatellitesInScene() {
         switch self.levelState {
         case .completed:
-            satellites.remove(at: 0)
             break
         case .currentSatellite(let index):
             var newSatellites: [SCNNode] = []
@@ -246,21 +261,28 @@ extension Level: Equatable {
     }
 }
 
-class Game: LevelCompletionDelegate {
+class Game: LevelCompletionDelegate, ObservableObject {
     private var allLevels: [Level] = Level.allLevels
+    var objectWillChange = ObservableObjectPublisher()
     var currentLevel: Level {
         didSet {
             if oldValue != currentLevel {
                 gameDelegate?.gameLevelChanged()
+                DispatchQueue.main.async {
+                    self.objectWillChange.send()
+                    self.labelContent = self.currentLevel.levelDescription
+                }
             }
         }
     }
     
+    var shouldShowCompletionLabel: Bool = false
+    var labelContent: String = "Tutorial"
+    var completionLabel: String = ""
+    
     weak var touchDelegate: TouchDelegate?
     weak var gameDelegate: GameDelegate?
-    
-    var cancellable: AnyCancellable?
-    
+        
     init() {
         self.currentLevel = allLevels[0]
         self.allLevels.forEach{ $0.levelChangeDelegate = self }
@@ -272,9 +294,32 @@ class Game: LevelCompletionDelegate {
     
     func receiveTouch(at point: CGPoint) {
         touchDelegate?.touchReceived(at: point)
+    }
+    
+    func resetLevel() {
+        currentLevel.resetLevel()
+        gameDelegate?.gameLevelChanged()
         
-        // FIXME: Change this
-//        self.currentLevel.correctSatelliteHit()
+        print("reset level. Current level now \(currentLevel.totalSatelliteCount)")
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+            self.labelContent = self.currentLevel.levelDescription
+        }
+    }
+    
+    func restartFromTutorial() {
+        for level in allLevels {
+            level.resetLevel()
+        }
+        
+        currentLevel = allLevels[0]
+        gameDelegate?.gameLevelChanged()
+        
+        print("reset level. Current level now \(currentLevel.totalSatelliteCount)")
+        DispatchQueue.main.async {
+            self.objectWillChange.send()
+            self.labelContent = self.currentLevel.levelDescription
+        }
     }
         
     var allNodes: [SCNNode] {
@@ -285,12 +330,30 @@ class Game: LevelCompletionDelegate {
     func levelCompleted() {
         switch currentLevel.levelState {
         case .completed:
-            let index = allLevels.firstIndex(of: currentLevel)!
-            if index != allLevels.count - 1 {
-                let nextIndex = index + 1
-                allLevels[nextIndex].levelState = .currentSatellite(0)
-                currentLevel = allLevels[nextIndex]
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+                self.completionLabel = "\(self.currentLevel.levelDescription) Completed "
+                withAnimation { self.shouldShowCompletionLabel = true }
             }
+            
+            
+            Timer.scheduledTimer(withTimeInterval: 2, repeats: false) { [unowned self] (_) in
+                DispatchQueue.main.async {
+                    withAnimation { self.shouldShowCompletionLabel = false }
+                    self.objectWillChange.send()
+                }
+            }
+            
+            // go to next level with a delay
+            Timer.scheduledTimer(withTimeInterval: 2, repeats: false) { (_) in
+                let index = self.allLevels.firstIndex(of: self.currentLevel)!
+                if index != self.allLevels.count - 1 {
+                    let nextIndex = index + 1
+                    self.allLevels[nextIndex].levelState = .currentSatellite(0)
+                    self.currentLevel = self.allLevels[nextIndex]
+                }
+            }
+            
             
         default:
             break
