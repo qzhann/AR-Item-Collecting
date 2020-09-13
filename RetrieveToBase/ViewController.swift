@@ -30,6 +30,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         scene.physicsWorld.contactDelegate = self
         sceneView.autoenablesDefaultLighting = true
         sceneView.debugOptions = [.showWorldOrigin]
+        sceneView.session.delegate = self
         
         // game object set up
         self.game = Game.currrent
@@ -160,6 +161,12 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     }
 }
 
+extension ViewController: ARSessionDelegate {
+    func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        projectionVectorOf(game.currentLevel.allSatellites[0], onCamera: frame.camera)
+    }
+}
+
 // MARK: - Touch controller delegate
 
 extension ViewController: TouchDelegate {
@@ -171,6 +178,9 @@ extension ViewController: TouchDelegate {
             let node = firstResult.node
             nodeTapped(node)
         }
+        
+        // FIXME: Remove this
+//        game.currentLevel.correctSatelliteHit()
     }
 }
 
@@ -194,6 +204,8 @@ extension ViewController: SCNPhysicsContactDelegate {
         }
     }
 }
+
+// MARK: - Game Delegate
 
 extension ViewController: GameDelegate {
     func gameLevelChanged() {

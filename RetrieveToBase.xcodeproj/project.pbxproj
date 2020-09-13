@@ -17,6 +17,7 @@
 		F687FCE0250CC7A700A6825D /* AROverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F687FCDF250CC7A700A6825D /* AROverlay.swift */; };
 		F687FCE6250CD1BF00A6825D /* Game.swift in Sources */ = {isa = PBXBuildFile; fileRef = F687FCE5250CD1BF00A6825D /* Game.swift */; };
 		F687FCEA250DBDF900A6825D /* CustomNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F687FCE9250DBDF900A6825D /* CustomNode.swift */; };
+		F6906F8F250E281A00237F94 /* IndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6906F8E250E281A00237F94 /* IndicatorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,7 @@
 		F687FCDF250CC7A700A6825D /* AROverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AROverlay.swift; sourceTree = "<group>"; };
 		F687FCE5250CD1BF00A6825D /* Game.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Game.swift; sourceTree = "<group>"; };
 		F687FCE9250DBDF900A6825D /* CustomNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomNode.swift; sourceTree = "<group>"; };
+		F6906F8E250E281A00237F94 /* IndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndicatorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,6 +85,7 @@
 			isa = PBXGroup;
 			children = (
 				F687FCDF250CC7A700A6825D /* AROverlay.swift */,
+				F6906F8E250E281A00237F94 /* IndicatorView.swift */,
 			);
 			path = SwiftUI;
 			sourceTree = "<group>";
@@ -162,6 +165,7 @@
 				F61B63F1250CB2BE001C0E01 /* ViewController.swift in Sources */,
 				F687FCE6250CD1BF00A6825D /* Game.swift in Sources */,
 				F687FCEA250DBDF900A6825D /* CustomNode.swift in Sources */,
+				F6906F8F250E281A00237F94 /* IndicatorView.swift in Sources */,
 				F61B63ED250CB2BE001C0E01 /* AppDelegate.swift in Sources */,
 				F61B6401250CB4AC001C0E01 /* Color+Extensions.swift in Sources */,
 				F687FCE0250CC7A700A6825D /* AROverlay.swift in Sources */,

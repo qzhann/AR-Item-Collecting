@@ -110,9 +110,9 @@ class Level {
             physicsBody.damping = 0.2
             physicsBody.contactTestBitMask = physicsBody.collisionBitMask
             
-            satellites.append(satelliteNode)
+            allSatellites.append(satelliteNode)
         }
-        allSatellites = satellites
+        satellites = allSatellites
         
         updateSatellitesInScene()
     }
@@ -138,19 +138,15 @@ class Level {
         case .completed:
             break
         case .currentSatellite(let index):
-            var newSatellites: [SCNNode] = []
+            satellites = []
             for i in allSatellites.indices {
                 if i >= index {
-                    newSatellites.append(allSatellites[i])
+                    satellites.append(allSatellites[i])
                 }
             }
-            satellites = newSatellites
+
             satellites.forEach { $0.geometry?.firstMaterial?.diffuse.contents = UIColor.defaultSatelliteColor }
-            let nextNode = satellites.first { (node) -> Bool in
-                let satellite = node as! SatelliteNode
-                return satellite.index == index
-            }
-            nextNode?.geometry?.firstMaterial?.diffuse.contents = UIColor.nextSatelliteColor
+            satellites.first?.geometry?.firstMaterial?.diffuse.contents = UIColor.nextSatelliteColor
         }
     }
     
@@ -279,6 +275,7 @@ class Game: LevelCompletionDelegate, ObservableObject {
     var shouldShowCompletionLabel: Bool = false
     var labelContent: String = "Tutorial"
     var completionLabel: String = ""
+    
     
     weak var touchDelegate: TouchDelegate?
     weak var gameDelegate: GameDelegate?
