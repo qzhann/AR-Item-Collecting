@@ -80,32 +80,52 @@ class Level {
         let baseNode = sphereScene.rootNode
         
 //        let baseNode = SCNNode()
-        baseNode.opacity = 0.9
-        let radius: CGFloat = 0.1
+//        baseNode.opacity = 0.9
+        let radius: CGFloat = 0.06
         // geometry
         let baseGeometry = SCNSphere(radius: radius)
         baseNode.geometry = baseGeometry
         baseGeometry.firstMaterial?.diffuse.contents = UIColor.baseColor
         baseNode.name = "base"
         // position
-        baseNode.position = SCNVector3(0, 0, -0.2)
+        baseNode.position = SCNVector3(0, 0, -0.4)
         // physics
         let physicsBody = SCNPhysicsBody(type: .static, shape: SCNPhysicsShape(geometry: SCNSphere(radius: radius), options: nil))
         baseNode.physicsBody = physicsBody
         
         base = baseNode
+        let pulseSphere = SCNSphere(radius: radius)
+        pulseSphere.firstMaterial?.diffuse.contents = UIColor.baseColor
+        let pulseNode = SCNNode(geometry: pulseSphere)
+        
+        baseNode.addChildNode(pulseNode)
+        let duration: CGFloat = 2
+        let fromOpacityValue: CGFloat = 1
+        let toOpacityValue: CGFloat = 0
+        let fromScaleValue: CGFloat = 1
+        let toScaleValue: CGFloat = 1.7
+        let pulse = SCNAction.customAction(duration: Double(duration)) { (node, currentTime) in
+            let percentage = currentTime / duration
+            node.opacity = fromOpacityValue + (toOpacityValue - fromOpacityValue) * percentage
+            let scaleFactor =  fromScaleValue + (toScaleValue - fromScaleValue) * percentage
+            node.scale = SCNVector3(scaleFactor, scaleFactor, scaleFactor)
+        }
+        baseNode.addChildNode(pulseNode)
+        pulseNode.runAction(SCNAction.repeatForever(SCNAction.sequence([pulse, SCNAction.wait(duration: 0.6)])))
         
         // add satellites
+        allSatellites = []
         satellites = []
         for i in 0 ..< totalSatelliteCount {
             let satelliteNode = SatelliteNode(index: i)
+            satelliteNode.opacity = 1
             let position: SCNVector3
             if totalSatelliteCount == 1 {
-                position = SCNVector3(0, 0, 0.3)
+                position = SCNVector3(0, 0, -0.1)
             } else {
-                position = SCNVector3.randomForItemWithRadiusInRoom(itemRadius: Float(radius), scale: 1)
+                position = SCNVector3.randomForItemWithRadiusInRoom(itemRadius: Float(radius), scale: 0.3)
             }
-            let radius: CGFloat = 0.05
+            let radius: CGFloat = 0.03
             // geometry
             let satelliteGeometry = SCNSphere(radius: radius)
             satelliteNode.geometry = satelliteGeometry
@@ -140,6 +160,7 @@ class Level {
                 self.levelState = .currentSatellite(nextIndex)
             }
         }
+        game?.trackedNode = nil
     }
     
     func updateSatellitesInScene() {
@@ -285,7 +306,15 @@ class Game: LevelCompletionDelegate, ObservableObject {
     var labelContent: String = "Tutorial"
     var completionLabel: String = ""
     
-    
+    var trackedNode: SCNNode? {
+        didSet {
+            if trackedNode != nil {
+                DispatchQueue.main.async {
+                    self.objectWillChange.send()
+                }
+            }
+        }
+    }
     weak var touchDelegate: TouchDelegate?
     weak var gameDelegate: GameDelegate?
         

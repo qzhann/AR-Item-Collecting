@@ -49,12 +49,15 @@ struct AROverlay: View {
                         completionLabel
                     }
                     
+                    if game.shouldShowCompletionLabel == false {
+                        selectionOverlay
+                    }
                     
                 }
             }
         
         }
-        .gesture(drag)
+//        .gesture(drag)
     }
     
     var replayOptions: some View {
@@ -93,7 +96,7 @@ struct AROverlay: View {
             }
         }
         .background(
-            BlurView(style: .prominent)
+            BlurView(style: .dark)
             .clipShape(RoundedRectangle(cornerRadius: 8))
         )
             .frame(width: 140)
@@ -111,7 +114,7 @@ struct AROverlay: View {
                             
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundColor(Color.init(.lightText))
                             .offset(x: 0, y: -3)
                         }
                     }
@@ -134,13 +137,13 @@ struct AROverlay: View {
         VStack {
             
             Text(game.labelContent)
-                .foregroundColor(.white)
+                .foregroundColor(Color.init(.lightText))
                 .font(.system(size: 24, weight: .medium, design: .rounded))
 
                 .padding(.vertical, 8)
                 .padding(.horizontal, 8)
                 .background(
-                    BlurView(style: .prominent)
+                    BlurView(style: .systemThinMaterialDark)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 )
                 .padding(.top)
@@ -154,13 +157,13 @@ struct AROverlay: View {
                 Image(systemName: "checkmark")
                 Text(game.completionLabel)
             }
-                .foregroundColor(.white)
+                .foregroundColor(Color.init(.lightText))
                 .font(.system(size: 24, weight: .medium, design: .rounded))
 
                 .padding(.vertical, 8)
                 .padding(.horizontal, 8)
                 .background(
-                    BlurView(style: .prominent)
+                    BlurView(style: .systemThinMaterialDark)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 )
                 .padding(.top)
@@ -168,16 +171,21 @@ struct AROverlay: View {
     .offset(x: 0, y: -30)
     }
     var gameStateOverlay: some View {
-        VStack {
+        HStack {
             Spacer()
-            HStack {
-                ForEach<Range<Int>, Int, SatelliteView>(0..<game.currentLevel.totalSatelliteCount, id: \.self) { index in
+
+            VStack {
+                Spacer()
+
+                ForEach<Range<Int>, Int, SatelliteView>((0..<game.currentLevel.totalSatelliteCount), id: \.self) { index in
+                    
+                    let reverseIndex = self.game.currentLevel.totalSatelliteCount - 1 - index
                     
                     var discoverState: DiscoverState = .retrievd
                     if let currentIndex = self.game.currentLevel.currentSatelliteIndex {
-                        if index == currentIndex {
+                        if reverseIndex == currentIndex {
                             discoverState = .current
-                        } else if index < currentIndex {
+                        } else if reverseIndex < currentIndex {
                             discoverState = .retrievd
                         } else {
                             discoverState = .future
@@ -187,13 +195,69 @@ struct AROverlay: View {
                     return SatelliteView(discoverState: discoverState)
                     
                 }
-                Spacer()
             }
             .padding()
             .padding(.bottom, 20)
+            
         }
     }
-    
+    var selectionOverlay: some View {
+        ZStack {
+
+            ZStack {
+                Circle()
+                    .fill(Color.init(.lightText))
+                .frame(width: 8, height: 8, alignment: .center)
+                
+                Circle()
+                .stroke(Color.init(.lightText), lineWidth: 6)
+                .frame(width: 100, height: 100, alignment: .center)
+            }
+            
+            GeometryReader { proxy in
+                VStack {
+                    Spacer()
+                    Button(action: {
+                        if self.game.trackedNode == nil {
+                            let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                            self.game.receiveTouchDown(at: center)
+                        } else {
+                            self.game.receiveTouchUp(at: .zero)
+                        }
+                    }) {
+                        ZStack {
+                            if self.game.trackedNode == nil {
+                                BlurView(style: .dark)
+                                .frame(width: 150, height: 60, alignment: .center)
+                                .clipShape(
+                                    RoundedRectangle(cornerRadius: 8)
+                                )
+                                Text("Select")
+                                    .layoutPriority(1)
+                                .font(.system(size: 30, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.init(.lightText))
+                                .padding(.horizontal, 16)
+                            } else {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.white)
+                                .frame(width: 150, height: 60, alignment: .center)
+                                Text("Shoot!")
+                                    .layoutPriority(1)
+                                .font(.system(size: 30, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.init(.black))
+                                .padding(.horizontal, 16)
+                            }
+                            
+
+                        }
+                    }
+                    .padding(.bottom, 26)
+                }
+            }
+            
+            
+        }
+    }
     
 }
 
@@ -203,12 +267,19 @@ enum DiscoverState {
     case future
 }
 
+//struct SelectionOverlay: View {
+//    @ObservedObject var game: Game
+//    var body: some View {
+//        ZStack
+//    }
+//}
+
 struct SatelliteView: View {
     var discoverState: DiscoverState
     var fillColor: Color {
         switch discoverState {
         case .retrievd:
-            return Color(.defaultSatelliteColor)
+            return Color(.clear)
         case .current:
             return Color(.nextSatelliteColor)
         case .future:
@@ -218,7 +289,7 @@ struct SatelliteView: View {
     var strokeColor: Color {
         switch discoverState {
         case .retrievd:
-            return Color(.clear)
+            return Color(.lightGray)
         case .current:
             return Color(UIColor.nextSatelliteColor.withAlphaComponent(0.7))
         case .future:
@@ -227,7 +298,8 @@ struct SatelliteView: View {
     }
     var body: some View {
         ZStack {
-            Circle()
+            if discoverState == .future {
+                Circle()
                 .strokeBorder(
                     style: StrokeStyle(
                         lineWidth: 2,
@@ -236,10 +308,31 @@ struct SatelliteView: View {
                 )
                 .foregroundColor(strokeColor)
                 .frame(width: 20, height: 20)
-            
-            Circle()
-                .fill(fillColor)
-                .frame(width: 20, height: 20)
+            } else  {
+                ZStack {
+                                        
+                    Circle()
+                    .strokeBorder(
+                        style: StrokeStyle(
+                            lineWidth: 2
+                        )
+                    )
+                    .foregroundColor(strokeColor)
+                    .frame(width: 20, height: 20)
+                    
+                    Circle()
+                    .fill(fillColor)
+                    .frame(width: 20, height: 20)
+                    
+                    if discoverState == .retrievd {
+                        Image(systemName: "checkmark")
+                        .font(.system(size: 24, weight: .heavy, design: .rounded))
+                        .foregroundColor(.green)
+                    }
+                    
+                }
+                
+            }
         }
         
     }
@@ -272,7 +365,11 @@ struct BlurView: UIViewRepresentable {
 
 struct AROverlay_Previews: PreviewProvider {
     static var previews: some View {
-        AROverlay()
+        Group {
+            AROverlay()
             .background(Color.blue.opacity(0.2))
+    
+        }
+        
     }
 }

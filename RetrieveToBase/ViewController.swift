@@ -13,19 +13,22 @@ import SwiftUI
 
 class ViewController: UIViewController, ARSCNViewDelegate {
     
-    var trackedNode: SCNNode?
-    var relativePosition: SCNVector3?
+    var minimapCameraNode: SCNNode!
+    var minimapTargetNode: SCNNode!
+    var minimapBaseNode: SCNNode!
+    
     weak var game: Game!
     var gameNodes: [SCNNode] = []
 
     @IBOutlet var sceneView: ARSCNView!
+    @IBOutlet weak var minimapView: SCNView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         // scene set up
         sceneView.delegate = self
-        sceneView.showsStatistics = true
+        sceneView.showsStatistics = false
         let scene = SCNScene()
         sceneView.scene = scene
         scene.physicsWorld.gravity = SCNVector3(0, 0, 0)
@@ -54,7 +57,9 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
         // trigger level change
         gameLevelChanged()
-
+        
+        // set up minimap
+        setUpMinimap()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -163,14 +168,18 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     }
 }
 
+// MARK: - AR Session Delegate
+
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
 
-        guard let trackedNode = trackedNode else { return }
-        guard trackedNode is SatelliteNode else { self.trackedNode = nil; self.relativePosition = nil; return }
+        guard let trackedNode = self.game.trackedNode else { return }
+        guard trackedNode is SatelliteNode else { self.game.trackedNode = nil; return }
         guard let cameraNode = sceneView.pointOfView else { return }
         let updatedTransform = updatedTransformOf(trackedNode, withPosition: SCNVector3(0, 0, -0.3), relativeTo: cameraNode)
         trackedNode.transform = updatedTransform
+        
+        updateNodePositionInMinimap()
     }
 }
 
@@ -205,24 +214,35 @@ extension ViewController: TouchDelegate {
             let trackAction = SCNAction.move(to: updatedPosition, duration: 0.2)
             trackAction.timingMode = .easeIn
             node.runAction(trackAction, completionHandler: {
-                self.trackedNode = node
+                self.game.trackedNode = node
             })
         }
     }
     
     func touchUpReceived(at point: CGPoint) {
-        trackedNode = nil
-        let hitTestOptions: [SCNHitTestOption: Any] = [.boundingBoxOnly: true]
-        let hitTestResults = sceneView.hitTest(point, options: hitTestOptions)
-        
-        if let firstResult = hitTestResults.first {
-            let node = firstResult.node
-            nodeTapped(node)
+        if let trackedNode = self.game.trackedNode {
+            nodeTapped(trackedNode)
+            self.game.trackedNode = nil
+            self.game.objectWillChange.send()
         }
-        
+    }
+    
+//    func touchUpReceived(at point: CGPoint) {
+//        let hitTestOptions: [SCNHitTestOption: Any] = [.boundingBoxOnly: true]
+//        let hitTestResults = sceneView.hitTest(point, options: hitTestOptions)
+//
+//        if let firstResult = hitTestResults.first {
+//            let node = firstResult.node
+//            if let trackedNode = self.game.trackedNode {
+//                self.game.trackedNode = nil
+//               nodeTapped(node)
+//
+//            }
+//        }
+
         // FIXME: Remove this
 //        game.currentLevel.correctSatelliteHit()
-    }
+//    }
 }
 
 // MARK: - Physics Contact delegate
@@ -253,16 +273,144 @@ extension ViewController: GameDelegate {
         
         // remove the previous nodes
         gameNodes.forEach { $0.removeFromParentNode() }
-        
-        for childNode in sceneView.scene.rootNode.childNodes {
-            childNode.removeFromParentNode()
-        }
-        
-        addWalls()
-        
+                
         // add the level nodes
         game.allNodes.forEach { sceneView.scene.rootNode.addChildNode($0) }
         gameNodes = game.allNodes
+    }
+}
+
+
+// MARK: - Minimap
+
+extension ViewController {
+    func setUpMinimap() {
+        // minimap set up
+        let minimapScene = SCNScene(named: "art.scnassets/minimap.scn")
+        minimapView.scene = minimapScene
+        minimapView.autoenablesDefaultLighting = true
+        minimapView.debugOptions = [.showWorldOrigin]
+
+        // hide background color
+//        minimapView.backgroundColor = .clear
+
+        minimapView.layer.cornerRadius = 8
+        addWallsToMinimap(scale: 1)
+        addInteractiveNodesToMinimap()
+
+        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { (_) in
+            self.updateNodePositionInMinimap()
+        }
+    }
+    
+    func addWallsToMinimap(scale: Float = 1) {
+        let topWallNode = SCNNode()
+        let bottomWallNode = SCNNode()
+        let leftWallNode = SCNNode()
+        let rightWallNode = SCNNode()
+        let frontWallNode = SCNNode()
+        let backWallNode = SCNNode()
+
+        let wallNodes = [topWallNode, bottomWallNode, leftWallNode, rightWallNode, frontWallNode, backWallNode]
+        wallNodes.forEach { $0.name = "wall" }
+
+        let wallThickness: Float = 0.1
+        let distanceToTop: Float = 0.3 * scale
+        let distanceToBottom: Float = 0.6 * scale
+        let distanceToFront: Float = 2 * scale
+        let distanceToBack: Float = 2 * scale
+        let distanceToLeft: Float = 2 * scale
+        let distanceToRight: Float = 2 * scale
+        let leftRightDistance = distanceToLeft + distanceToRight
+        let topBottomDistance = distanceToTop + distanceToBottom
+        let frontBackDistance = distanceToFront + distanceToBack
+
+        // geometry
+        let topBottomWallGeometry = SCNBox(width: CGFloat(leftRightDistance), height: CGFloat(wallThickness), length: CGFloat(frontBackDistance), chamferRadius: 0)
+        let frontBackWallGeometry = SCNBox(width: CGFloat(leftRightDistance), height: CGFloat(topBottomDistance), length: CGFloat(wallThickness), chamferRadius: 0)
+        let leftRightWallGeometry = SCNBox(width: CGFloat(wallThickness), height: CGFloat(topBottomDistance), length: CGFloat(frontBackDistance), chamferRadius: 0)
+        let wallGeometries = [topBottomWallGeometry, frontBackWallGeometry, leftRightWallGeometry]
+        for wallGeometry in wallGeometries {
+            wallGeometry.firstMaterial?.diffuse.contents = UIColor.gray.withAlphaComponent(0.5)
+        }
+
+        topWallNode.geometry = topBottomWallGeometry
+        bottomWallNode.geometry = topBottomWallGeometry
+        leftWallNode.geometry = leftRightWallGeometry
+        rightWallNode.geometry = leftRightWallGeometry
+        frontWallNode.geometry = frontBackWallGeometry
+        backWallNode.geometry = frontBackWallGeometry
+
+        // position
+        let adjustedOrigion = SCNVector3(0, 1, 0)
+        let surroundingWallYPosition = -topBottomDistance / 2 + distanceToTop
+        topWallNode.position = SCNVector3(x: 0, y: distanceToTop + adjustedOrigion.y, z: 0)
+        bottomWallNode.position = SCNVector3(x: 0, y: -distanceToBottom + adjustedOrigion.y, z: 0)
+        leftWallNode.position = SCNVector3(x: -distanceToLeft, y: surroundingWallYPosition + adjustedOrigion.y, z: 0)
+        rightWallNode.position = SCNVector3(x: distanceToRight, y: surroundingWallYPosition + adjustedOrigion.y, z: 0)
+        frontWallNode.position = SCNVector3(x: 0, y: surroundingWallYPosition + adjustedOrigion.y, z: -distanceToFront)
+        backWallNode.position = SCNVector3(x: 0, y: surroundingWallYPosition + adjustedOrigion.y, z: distanceToBack)
+
+        wallNodes.forEach { minimapView.scene!.rootNode.addChildNode($0) }
+    }
+
+    func addInteractiveNodesToMinimap() {
+
+        // camera
+
+        let miniCameraNode = SCNNode()
+        let radius: CGFloat = 0.1
+        // geometry
+        let geometry = SCNBox(width: radius * 2, height: radius * 2, length: radius * 2, chamferRadius: 0.01)
+        miniCameraNode.geometry = geometry
+        geometry.firstMaterial?.diffuse.contents = UIColor.red
+        // position
+        miniCameraNode.transform = self.sceneView.pointOfView!.transform
+        // assign
+        self.minimapCameraNode = miniCameraNode
+
+        // target
+
+        let miniTargetNode = SCNNode()
+        // geometry
+        let targetGeometry = SCNSphere(radius: radius)
+        miniTargetNode.geometry = targetGeometry
+        targetGeometry.firstMaterial?.diffuse.contents = UIColor.white
+        //position
+        if let currentIndex = self.game.currentLevel.currentSatelliteIndex {
+            let targetNode = self.game.currentLevel.satellites.first(where: { (node) -> Bool in
+                let nd = node as! SatelliteNode
+                return nd.index == currentIndex
+            })
+            if let targetNode = targetNode {
+                miniTargetNode.position = targetNode.position
+            } else {
+                miniTargetNode.opacity = 0
+            }
+        }
+        minimapTargetNode = miniTargetNode
+
+        self.minimapView.scene?.rootNode.addChildNode(minimapCameraNode!)
+        self.minimapView.scene?.rootNode.addChildNode(minimapTargetNode!)
+    }
+
+    func updateNodePositionInMinimap() {
+        // camera
+        minimapCameraNode?.transform = self.sceneView.pointOfView!.transform
+
+        // target
+        minimapTargetNode?.opacity = 1
+        if let currentIndex = self.game.currentLevel.currentSatelliteIndex {
+            let targetNode = self.game.currentLevel.satellites.first(where: { (node) -> Bool in
+                let nd = node as! SatelliteNode
+                return nd.index == currentIndex
+            })
+            if let targetNode = targetNode {
+                minimapTargetNode?.transform = targetNode.presentation.transform
+            } else {
+                minimapTargetNode?.opacity = 0
+            }
+        }
     }
 }
 

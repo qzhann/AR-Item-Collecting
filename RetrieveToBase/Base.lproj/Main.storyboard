@@ -24,9 +24,18 @@
                                     <segue destination="RH6-N7-66C" kind="embed" destinationCreationSelector="embed:" id="wPt-Jw-iUJ"/>
                                 </connections>
                             </containerView>
+                            <sceneKitView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="e7N-dK-jTM">
+                                <rect key="frame" x="98" y="60" width="300" height="300"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="300" id="6QB-CB-OAf"/>
+                                    <constraint firstAttribute="height" constant="300" id="EXy-db-tbi"/>
+                                </constraints>
+                            </sceneKitView>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
                         <constraints>
+                            <constraint firstItem="e7N-dK-jTM" firstAttribute="top" secondItem="fQZ-KI-GVf" secondAttribute="top" constant="16" id="2rp-1b-IVD"/>
+                            <constraint firstItem="fQZ-KI-GVf" firstAttribute="trailing" secondItem="e7N-dK-jTM" secondAttribute="trailing" constant="16" id="ESW-SB-bXE"/>
                             <constraint firstItem="BrB-h1-WRS" firstAttribute="leading" secondItem="fQZ-KI-GVf" secondAttribute="leading" id="GsS-dJ-CKf"/>
                             <constraint firstItem="fQZ-KI-GVf" firstAttribute="trailing" secondItem="uEe-fZ-VOi" secondAttribute="trailing" id="Pzb-GU-Vbk"/>
                             <constraint firstItem="BrB-h1-WRS" firstAttribute="bottom" secondItem="fQZ-KI-GVf" secondAttribute="bottom" id="VpT-BR-CcM"/>
@@ -39,6 +48,7 @@
                         <viewLayoutGuide key="safeArea" id="fQZ-KI-GVf"/>
                     </view>
                     <connections>
+                        <outlet property="minimapView" destination="e7N-dK-jTM" id="U1D-Bv-7qH"/>
                         <outlet property="sceneView" destination="BrB-h1-WRS" id="5nT-qQ-ynl"/>
                     </connections>
                 </viewController>
