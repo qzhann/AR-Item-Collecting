@@ -57,7 +57,17 @@ class Level {
         case 2:
             return "Level 1"
         default:
-            return "Level 2"
+            return "Challenge"
+        }
+    }
+    var levelCompletionDescription: String {
+        switch totalSatelliteCount {
+        case 1:
+            return "Level 1"
+        case 2:
+            return "Challenge"
+        default:
+            return "All challenge completed"
         }
     }
     var base: SCNNode!
@@ -78,20 +88,23 @@ class Level {
         // add base
         let sphereScene = SCNScene(named: "art.scnassets/sphere.scn")!
         let baseNode = sphereScene.rootNode
+
+        let sphereNode = SCNNode()
+        baseNode.addChildNode(sphereNode)
         
 //        let baseNode = SCNNode()
 //        baseNode.opacity = 0.9
         let radius: CGFloat = 0.06
         // geometry
         let baseGeometry = SCNSphere(radius: radius)
-        baseNode.geometry = baseGeometry
+        sphereNode.geometry = baseGeometry
         baseGeometry.firstMaterial?.diffuse.contents = UIColor.baseColor
-        baseNode.name = "base"
+        sphereNode.name = "base"
         // position
         baseNode.position = SCNVector3(0, 0, -0.4)
         // physics
-        let physicsBody = SCNPhysicsBody(type: .static, shape: SCNPhysicsShape(geometry: SCNSphere(radius: radius), options: nil))
-        baseNode.physicsBody = physicsBody
+        let physicsBody = SCNPhysicsBody(type: .static, shape: SCNPhysicsShape(node: sphereNode, options: nil))
+        sphereNode.physicsBody = physicsBody
         
         base = baseNode
         let pulseSphere = SCNSphere(radius: radius)
@@ -110,7 +123,6 @@ class Level {
             let scaleFactor =  fromScaleValue + (toScaleValue - fromScaleValue) * percentage
             node.scale = SCNVector3(scaleFactor, scaleFactor, scaleFactor)
         }
-        baseNode.addChildNode(pulseNode)
         pulseNode.runAction(SCNAction.repeatForever(SCNAction.sequence([pulse, SCNAction.wait(duration: 0.6)])))
         
         // add satellites
@@ -172,6 +184,8 @@ class Level {
             for i in allSatellites.indices {
                 if i >= index {
                     satellites.append(allSatellites[i])
+                } else {
+                    allSatellites[i].removeFromParentNode()
                 }
             }
 
@@ -185,19 +199,23 @@ class Level {
         if index == satellite.index {
             // correct satellite collision
             let fadeActions = fadeNode(satellite)
-            let flashColorActions = flashColorOnBase(color: UIColor.nextSatelliteColor)
+            let flashColorActions = flashColorOnBase(color: UIColor.correctColor)
             let flashExpansionActions = flashExpansionOnNode(base)
             
             base.runAction(SCNAction.group([flashColorActions, flashExpansionActions]))
             satellite.runAction(fadeActions, completionHandler: {
                 self.correctSatelliteHit()
             })
+            let hapticGenerator = HapticsGenerator()
+            hapticGenerator.generateNotificationFeedback(.success)
             
         } else {
             // incorrect satellite collision
             let flashColorActions = flashColorOnBase(color: UIColor.incorrectColor)
             
             base.runAction(flashColorActions, completionHandler: nil)
+            let hapticGenerator = HapticsGenerator()
+            hapticGenerator.generateNotificationFeedback(.error)
         }
     }
     
@@ -210,13 +228,13 @@ class Level {
         let flashColorAction = SCNAction.customAction(duration: TimeInterval(rampUpDuration)) { (node, elapsedTime) -> () in
             let percentage = elapsedTime / rampUpDuration
             let color = self.interpolatedColor(from: beforeColor, to: flashColor, percentage: percentage)
-            node.geometry!.firstMaterial!.diffuse.contents = color
+            node.childNode(withName: "base", recursively: true)!.geometry!.firstMaterial!.diffuse.contents = color
         }
         
         let revertColorAction = SCNAction.customAction(duration: TimeInterval(rampDownDuration)) { (node, elapsedTime) -> () in
             let percentage = elapsedTime / rampDownDuration
             let color = self.interpolatedColor(from: flashColor, to: beforeColor, percentage: percentage)
-            node.geometry!.firstMaterial!.diffuse.contents = color
+            node.childNode(withName: "base", recursively: true)!.geometry!.firstMaterial!.diffuse.contents = color
         }
         revertColorAction.timingMode = .easeOut
         
@@ -225,7 +243,7 @@ class Level {
     
     func flashExpansionOnNode(_ node: SCNNode) -> SCNAction {
         let fromValue: CGFloat = CGFloat(node.scale.x)
-        let toValue: CGFloat = CGFloat(node.scale.x * 1.2)
+        let toValue: CGFloat = CGFloat(node.scale.x * 1.1)
         let rampUpDuration: CGFloat = 0.4
         let scaleUp = SCNAction.customAction(duration: TimeInterval(rampUpDuration)) { (node, elapsedTime) -> () in
             let percentage = elapsedTime / rampUpDuration
@@ -288,6 +306,7 @@ extension Level: Equatable {
 }
 
 class Game: LevelCompletionDelegate, ObservableObject {
+    var selections: [SCNNode?] = [SCNNode(), SCNNode(), SCNNode()]
     private var allLevels: [Level] = Level.allLevels
     var objectWillChange = ObservableObjectPublisher()
     var currentLevel: Level {
@@ -297,13 +316,23 @@ class Game: LevelCompletionDelegate, ObservableObject {
                 DispatchQueue.main.async {
                     self.objectWillChange.send()
                     self.labelContent = self.currentLevel.levelDescription
+                    self.shouldShowLabelContent = true
+                    Timer.scheduledTimer(withTimeInterval: 3, repeats: false) { (_) in
+                        DispatchQueue.main.async {
+                            self.objectWillChange.send()
+                            self.shouldShowLabelContent = false
+
+                        }
+                    }
                 }
             }
         }
     }
+    var selectionTimer: Timer?
     
     var shouldShowCompletionLabel: Bool = false
-    var labelContent: String = "Tutorial"
+    var shouldShowLabelContent: Bool = false
+    var labelContent: String = ""
     var completionLabel: String = ""
     
     var trackedNode: SCNNode? {
@@ -318,6 +347,7 @@ class Game: LevelCompletionDelegate, ObservableObject {
     weak var touchDelegate: TouchDelegate?
     weak var gameDelegate: GameDelegate?
         
+    var previousCollision: SatelliteNode?
     init() {
         self.currentLevel = allLevels[0]
         self.allLevels.forEach{ $0.levelChangeDelegate = self }
@@ -325,7 +355,20 @@ class Game: LevelCompletionDelegate, ObservableObject {
     }
     
     func baseCollidesWithSatellite(_ satellite: SatelliteNode) {
-        currentLevel.baseCollidesWithSatellite(satellite)
+        if let previousCollision = previousCollision {
+            if let correctIndex = currentLevel.currentSatelliteIndex {
+                if satellite.index == correctIndex && satellite == previousCollision {
+                    currentLevel.baseCollidesWithSatellite(satellite)
+                    self.previousCollision = satellite
+                } else {
+                    currentLevel.baseCollidesWithSatellite(satellite)
+                    self.previousCollision = satellite
+                }
+            }
+        } else {
+            currentLevel.baseCollidesWithSatellite(satellite)
+            self.previousCollision = satellite
+        }
     }
     
     func receiveTouchDown(at point: CGPoint) {
@@ -372,7 +415,7 @@ class Game: LevelCompletionDelegate, ObservableObject {
         case .completed:
             DispatchQueue.main.async {
                 self.objectWillChange.send()
-                self.completionLabel = "\(self.currentLevel.levelDescription) Completed "
+                self.completionLabel = self.currentLevel.levelCompletionDescription
                 withAnimation { self.shouldShowCompletionLabel = true }
             }
             

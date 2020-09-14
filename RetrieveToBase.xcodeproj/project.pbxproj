@@ -14,6 +14,8 @@
 		F61B63F6250CB2BF001C0E01 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F61B63F5250CB2BF001C0E01 /* Assets.xcassets */; };
 		F61B63F9250CB2BF001C0E01 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F61B63F7250CB2BF001C0E01 /* LaunchScreen.storyboard */; };
 		F61B6401250CB4AC001C0E01 /* Color+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61B6400250CB4AC001C0E01 /* Color+Extensions.swift */; };
+		F66E6172250F91B700435A3F /* HapticsGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66E616A250F91B700435A3F /* HapticsGenerator.swift */; };
+		F66E6178250F91B700435A3F /* MusicCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66E6170250F91B700435A3F /* MusicCoordinator.swift */; };
 		F687FCE0250CC7A700A6825D /* AROverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F687FCDF250CC7A700A6825D /* AROverlay.swift */; };
 		F687FCE6250CD1BF00A6825D /* Game.swift in Sources */ = {isa = PBXBuildFile; fileRef = F687FCE5250CD1BF00A6825D /* Game.swift */; };
 		F687FCEA250DBDF900A6825D /* CustomNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F687FCE9250DBDF900A6825D /* CustomNode.swift */; };
@@ -30,6 +32,8 @@
 		F61B63F8250CB2BF001C0E01 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F61B63FA250CB2BF001C0E01 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F61B6400250CB4AC001C0E01 /* Color+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Extensions.swift"; sourceTree = "<group>"; };
+		F66E616A250F91B700435A3F /* HapticsGenerator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HapticsGenerator.swift; sourceTree = "<group>"; };
+		F66E6170250F91B700435A3F /* MusicCoordinator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MusicCoordinator.swift; sourceTree = "<group>"; };
 		F687FCDF250CC7A700A6825D /* AROverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AROverlay.swift; sourceTree = "<group>"; };
 		F687FCE5250CD1BF00A6825D /* Game.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Game.swift; sourceTree = "<group>"; };
 		F687FCE9250DBDF900A6825D /* CustomNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomNode.swift; sourceTree = "<group>"; };
@@ -71,6 +75,7 @@
 				F687FCE5250CD1BF00A6825D /* Game.swift */,
 				F687FCE9250DBDF900A6825D /* CustomNode.swift */,
 				F61B63F0250CB2BE001C0E01 /* ViewController.swift */,
+				F66E6168250F91B700435A3F /* Sounds and Haptics */,
 				F687FCDE250CC78200A6825D /* SwiftUI */,
 				F61B6400250CB4AC001C0E01 /* Color+Extensions.swift */,
 				F61B63F2250CB2BE001C0E01 /* Main.storyboard */,
@@ -79,6 +84,15 @@
 				F61B63FA250CB2BF001C0E01 /* Info.plist */,
 			);
 			path = RetrieveToBase;
+			sourceTree = "<group>";
+		};
+		F66E6168250F91B700435A3F /* Sounds and Haptics */ = {
+			isa = PBXGroup;
+			children = (
+				F66E616A250F91B700435A3F /* HapticsGenerator.swift */,
+				F66E6170250F91B700435A3F /* MusicCoordinator.swift */,
+			);
+			path = "Sounds and Haptics";
 			sourceTree = "<group>";
 		};
 		F687FCDE250CC78200A6825D /* SwiftUI */ = {
@@ -167,8 +181,10 @@
 				F687FCEA250DBDF900A6825D /* CustomNode.swift in Sources */,
 				F6906F8F250E281A00237F94 /* IndicatorView.swift in Sources */,
 				F61B63ED250CB2BE001C0E01 /* AppDelegate.swift in Sources */,
+				F66E6178250F91B700435A3F /* MusicCoordinator.swift in Sources */,
 				F61B6401250CB4AC001C0E01 /* Color+Extensions.swift in Sources */,
 				F687FCE0250CC7A700A6825D /* AROverlay.swift in Sources */,
+				F66E6172250F91B700435A3F /* HapticsGenerator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

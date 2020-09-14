@@ -7,11 +7,15 @@
 //
 
 import SwiftUI
+import SceneKit
 
 struct AROverlay: View {
+    @State private var selections: [SCNNode?] = [SCNNode(), SCNNode(), SCNNode()]
     @State private var touchedDown = false
     @State private var showReplayOptions = false
-    
+    @State private var titleContent: String = ""
+    @State private var shouldShowTitle = false
+    @State private var titleTimer: Timer?
     @ObservedObject var game = Game.currrent
     
     private var drag: some Gesture {
@@ -43,8 +47,9 @@ struct AROverlay: View {
                 ZStack {
                     gameStateOverlay
                     restartButton
-                    titleLabel
-                    
+                    if shouldShowTitle {
+                        titleLabel
+                    }
                     if game.shouldShowCompletionLabel {
                         completionLabel
                     }
@@ -135,8 +140,8 @@ struct AROverlay: View {
     }
     var titleLabel: some View {
         VStack {
-            
-            Text(game.labelContent)
+            if true {
+                Text(self.titleContent)
                 .foregroundColor(Color.init(.lightText))
                 .font(.system(size: 24, weight: .medium, design: .rounded))
 
@@ -147,6 +152,10 @@ struct AROverlay: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 )
                 .padding(.top)
+                .transition(.opacity)
+                .animation(.linear)
+            }
+            
             Spacer()
         }
     }
@@ -154,14 +163,13 @@ struct AROverlay: View {
         VStack {
             
             HStack {
-                Image(systemName: "checkmark")
                 Text(game.completionLabel)
             }
                 .foregroundColor(Color.init(.lightText))
                 .font(.system(size: 24, weight: .medium, design: .rounded))
 
                 .padding(.vertical, 8)
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 12)
                 .background(
                     BlurView(style: .systemThinMaterialDark)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -257,6 +265,7 @@ struct AROverlay: View {
             
             
         }
+        .padding(.bottom, 65)
     }
     
 }

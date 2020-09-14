@@ -25,18 +25,17 @@
                                 </connections>
                             </containerView>
                             <sceneKitView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="e7N-dK-jTM">
-                                <rect key="frame" x="98" y="60" width="300" height="300"/>
+                                <rect key="frame" x="274" y="64" width="124" height="124"/>
+                                <gestureRecognizers/>
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="300" id="6QB-CB-OAf"/>
-                                    <constraint firstAttribute="height" constant="300" id="EXy-db-tbi"/>
+                                    <constraint firstAttribute="width" secondItem="e7N-dK-jTM" secondAttribute="height" multiplier="1:1" id="I1b-hQ-qe9"/>
                                 </constraints>
                             </sceneKitView>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
                         <constraints>
-                            <constraint firstItem="e7N-dK-jTM" firstAttribute="top" secondItem="fQZ-KI-GVf" secondAttribute="top" constant="16" id="2rp-1b-IVD"/>
-                            <constraint firstItem="fQZ-KI-GVf" firstAttribute="trailing" secondItem="e7N-dK-jTM" secondAttribute="trailing" constant="16" id="ESW-SB-bXE"/>
                             <constraint firstItem="BrB-h1-WRS" firstAttribute="leading" secondItem="fQZ-KI-GVf" secondAttribute="leading" id="GsS-dJ-CKf"/>
+                            <constraint firstItem="fQZ-KI-GVf" firstAttribute="trailing" secondItem="e7N-dK-jTM" secondAttribute="trailing" constant="16" id="Hm2-4B-Xwk"/>
                             <constraint firstItem="fQZ-KI-GVf" firstAttribute="trailing" secondItem="uEe-fZ-VOi" secondAttribute="trailing" id="Pzb-GU-Vbk"/>
                             <constraint firstItem="BrB-h1-WRS" firstAttribute="bottom" secondItem="fQZ-KI-GVf" secondAttribute="bottom" id="VpT-BR-CcM"/>
                             <constraint firstItem="fQZ-KI-GVf" firstAttribute="bottom" secondItem="uEe-fZ-VOi" secondAttribute="bottom" id="XRQ-cp-4eY"/>
@@ -44,6 +43,8 @@
                             <constraint firstItem="BrB-h1-WRS" firstAttribute="trailing" secondItem="fQZ-KI-GVf" secondAttribute="trailing" id="XyZ-9z-H8e"/>
                             <constraint firstItem="uEe-fZ-VOi" firstAttribute="top" secondItem="U0K-SW-4ec" secondAttribute="top" id="f8P-6d-Nc5"/>
                             <constraint firstItem="BrB-h1-WRS" firstAttribute="top" secondItem="U0K-SW-4ec" secondAttribute="top" id="rJc-2c-zQA"/>
+                            <constraint firstItem="e7N-dK-jTM" firstAttribute="top" secondItem="fQZ-KI-GVf" secondAttribute="top" constant="20" id="vuN-3L-pTY"/>
+                            <constraint firstItem="e7N-dK-jTM" firstAttribute="width" secondItem="uEe-fZ-VOi" secondAttribute="width" multiplier="0.3" id="yYK-xG-qTO"/>
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="fQZ-KI-GVf"/>
                     </view>

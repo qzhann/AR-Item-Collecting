@@ -16,9 +16,11 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     var minimapCameraNode: SCNNode!
     var minimapTargetNode: SCNNode!
     var minimapBaseNode: SCNNode!
-    
+    var minimapIsExpanded = false
     weak var game: Game!
     var gameNodes: [SCNNode] = []
+    var oldY: Float?
+    var oldX: Float?
 
     @IBOutlet var sceneView: ARSCNView!
     @IBOutlet weak var minimapView: SCNView!
@@ -204,23 +206,33 @@ extension ViewController: TouchDelegate {
     func touchDownReceived(at point: CGPoint) {
         let hitTestOptions: [SCNHitTestOption: Any] = [.boundingBoxOnly: true]
         let hitTestResults = sceneView.hitTest(point, options: hitTestOptions)
-
-        if let firstResult = hitTestResults.first {
-            let node = firstResult.node
-            guard node is SatelliteNode else { return }
-            let updatedTransform = updatedTransformOf(node, withPosition: SCNVector3(0, 0, -0.3), relativeTo: sceneView.pointOfView!)
-            let updatedPosition = SCNVector3(updatedTransform.m41, updatedTransform.m42, updatedTransform.m43)
-
-            let trackAction = SCNAction.move(to: updatedPosition, duration: 0.2)
-            trackAction.timingMode = .easeIn
-            node.runAction(trackAction, completionHandler: {
-                self.game.trackedNode = node
-            })
+        
+        var resultNode: SCNNode?
+        for result in hitTestResults {
+            if result.node is SatelliteNode {
+                resultNode = result.node
+                break
+            }
         }
+        guard let node = resultNode else { return }
+            
+        let updatedTransform = updatedTransformOf(node, withPosition: SCNVector3(0, 0, -0.3), relativeTo: sceneView.pointOfView!)
+        let updatedPosition = SCNVector3(updatedTransform.m41, updatedTransform.m42, updatedTransform.m43)
+
+        let trackAction = SCNAction.move(to: updatedPosition, duration: 0.2)
+        trackAction.timingMode = .easeIn
+        let hapticGenerator = HapticsGenerator()
+        hapticGenerator.generateSelectionFeedback()
+        node.runAction(trackAction, completionHandler: {
+            self.game.trackedNode = node
+            hapticGenerator.generateImpactFeedback()
+        })
     }
     
     func touchUpReceived(at point: CGPoint) {
         if let trackedNode = self.game.trackedNode {
+            let hapticGenerator = HapticsGenerator()
+            hapticGenerator.generateSelectionFeedback()
             nodeTapped(trackedNode)
             self.game.trackedNode = nil
             self.game.objectWillChange.send()
@@ -298,7 +310,7 @@ extension ViewController {
         addWallsToMinimap(scale: 1)
         addInteractiveNodesToMinimap()
 
-        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { (_) in
+        Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { (_) in
             self.updateNodePositionInMinimap()
         }
     }
@@ -311,7 +323,7 @@ extension ViewController {
         let frontWallNode = SCNNode()
         let backWallNode = SCNNode()
 
-        let wallNodes = [topWallNode, bottomWallNode, leftWallNode, rightWallNode, frontWallNode, backWallNode]
+        var wallNodes = [topWallNode, bottomWallNode, leftWallNode, rightWallNode, frontWallNode, backWallNode]
         wallNodes.forEach { $0.name = "wall" }
 
         let wallThickness: Float = 0.1
@@ -342,7 +354,7 @@ extension ViewController {
         backWallNode.geometry = frontBackWallGeometry
 
         // position
-        let adjustedOrigion = SCNVector3(0, 1, 0)
+        let adjustedOrigion = SCNVector3(0, 0, 0)
         let surroundingWallYPosition = -topBottomDistance / 2 + distanceToTop
         topWallNode.position = SCNVector3(x: 0, y: distanceToTop + adjustedOrigion.y, z: 0)
         bottomWallNode.position = SCNVector3(x: 0, y: -distanceToBottom + adjustedOrigion.y, z: 0)
@@ -351,6 +363,8 @@ extension ViewController {
         frontWallNode.position = SCNVector3(x: 0, y: surroundingWallYPosition + adjustedOrigion.y, z: -distanceToFront)
         backWallNode.position = SCNVector3(x: 0, y: surroundingWallYPosition + adjustedOrigion.y, z: distanceToBack)
 
+        wallNodes.removeFirst()
+        wallNodes.removeFirst()
         wallNodes.forEach { minimapView.scene!.rootNode.addChildNode($0) }
     }
 
@@ -361,17 +375,19 @@ extension ViewController {
         let miniCameraNode = SCNNode()
         let radius: CGFloat = 0.1
         // geometry
-        let geometry = SCNBox(width: radius * 2, height: radius * 2, length: radius * 2, chamferRadius: 0.01)
-        miniCameraNode.geometry = geometry
-        geometry.firstMaterial?.diffuse.contents = UIColor.red
+//        let geometry = SCNBox(width: radius * 1, height: radius * 1, length: radius * 3, chamferRadius: 0.01)
+        let cone = SCNCone(topRadius: 0.0, bottomRadius: 0.2, height: 1)
+        miniCameraNode.geometry = cone
+        cone.firstMaterial?.diffuse.contents = UIColor.red.withAlphaComponent(0.7)
         // position
         miniCameraNode.transform = self.sceneView.pointOfView!.transform
         // assign
         self.minimapCameraNode = miniCameraNode
-
+        miniCameraNode.renderingOrder = -1
         // target
 
         let miniTargetNode = SCNNode()
+        miniTargetNode.renderingOrder = -2
         // geometry
         let targetGeometry = SCNSphere(radius: radius)
         miniTargetNode.geometry = targetGeometry
@@ -382,22 +398,63 @@ extension ViewController {
                 let nd = node as! SatelliteNode
                 return nd.index == currentIndex
             })
+            
             if let targetNode = targetNode {
                 miniTargetNode.position = targetNode.position
+                
+                let pulseNode = SCNNode()
+                pulseNode.renderingOrder = 3
+                let pulseGeometry = SCNSphere(radius: radius)
+                pulseGeometry.firstMaterial?.diffuse.contents = UIColor.white
+                pulseGeometry.firstMaterial?.transparencyMode = .singleLayer
+                pulseNode.geometry = pulseGeometry
+                miniTargetNode.addChildNode(pulseNode)
+                
+                let duration: CGFloat = 3
+                let fromOpacityValue: CGFloat = 1
+                let toOpacityValue: CGFloat = 0
+                let fromScaleValue: CGFloat = 1
+                let toScaleValue: CGFloat = 5
+                let pulse = SCNAction.customAction(duration: Double(duration)) { (node, currentTime) in
+                    let percentage = currentTime / duration
+                    node.opacity = fromOpacityValue + (toOpacityValue - fromOpacityValue) * percentage
+                    let scaleFactor =  fromScaleValue + (toScaleValue - fromScaleValue) * percentage
+                    node.scale = SCNVector3(scaleFactor, scaleFactor, scaleFactor)
+                }
+                pulseNode.runAction(SCNAction.repeatForever(SCNAction.sequence([SCNAction.sequence([pulse]), SCNAction.wait(duration: 0.6)])))
+
             } else {
                 miniTargetNode.opacity = 0
             }
         }
         minimapTargetNode = miniTargetNode
-
+        
+        // base
+        let baseNode = SCNNode()
+        let baseRadius: CGFloat = 0.3
+        // geometry
+        let baseGeometry = SCNSphere(radius: baseRadius)
+        baseNode.geometry = baseGeometry
+        baseGeometry.firstMaterial?.diffuse.contents = UIColor.gray
+        baseNode.name = "base"
+        // position
+        baseNode.position = SCNVector3(0, 0, -0.4)
+        // physics
+        let physicsBody = SCNPhysicsBody(type: .static, shape: SCNPhysicsShape(geometry: SCNSphere(radius: radius), options: nil))
+        baseNode.physicsBody = physicsBody
+        
+        minimapBaseNode = baseNode
+        
         self.minimapView.scene?.rootNode.addChildNode(minimapCameraNode!)
         self.minimapView.scene?.rootNode.addChildNode(minimapTargetNode!)
+        self.minimapView.scene?.rootNode.addChildNode(minimapBaseNode!)
+        
     }
 
     func updateNodePositionInMinimap() {
         // camera
         minimapCameraNode?.transform = self.sceneView.pointOfView!.transform
-
+        minimapCameraNode.eulerAngles.x += Float.pi / 2
         // target
         minimapTargetNode?.opacity = 1
         if let currentIndex = self.game.currentLevel.currentSatelliteIndex {
@@ -408,10 +465,37 @@ extension ViewController {
             if let targetNode = targetNode {
                 minimapTargetNode?.transform = targetNode.presentation.transform
             } else {
-                minimapTargetNode?.opacity = 0
+//                minimapTargetNode?.opacity = 0
             }
         }
+        
+        // update point of view location
+        let x = self.sceneView.pointOfView!.eulerAngles.x
+        let y = self.sceneView.pointOfView!.eulerAngles.y
+        let z = self.sceneView.pointOfView!.transform.m33
+        var angleY = y - (oldY ?? 0)
+        if z < 0 {
+            angleY = -angleY
+        } else if y == -Float.pi / 2 {
+            angleY = -Float.pi / 21
+        }
+         
+        let angleX = x - (oldX ?? 0)
+        oldX = x
+        oldY = y
+        let rotationMatrixY = SCNMatrix4(m11: cos(angleY), m12: 0, m13: -sin(angleY), m14: 0, m21: 0, m22: 1, m23: 0, m24: 0, m31: sin(angleY), m32: 0, m33: cos(angleY), m34: 0, m41: 0, m42: 0, m43: 0, m44: 1)
+//        let rotationMatrixX = SCNMatrix4(m11: 1, m12: 0, m13: 0, m14: 0, m21: 0, m22: cos(angleX), m23: sin(angleX), m24: 0, m31: 0, m32: -sin(angleX), m33: cos(angleX), m34: 0, m41: 0, m42: 0, m43: 0, m44: 1)
+        let rotationMatrixX = SCNMatrix4(m11: 1, m12: 0, m13: 0, m14: 0, m21: 0, m22: 1, m23: 0, m24: 0, m31: 0, m32: 0, m33: 1, m34: 0, m41: 0, m42: 0, m43: 0, m44: 1)
+
+        let simdMatrixX = simd_float4x4(rotationMatrixX)
+        let simdMatrixY = simd_float4x4(rotationMatrixY)
+        let newTransformX = matrix_multiply(simdMatrixX, self.minimapView.pointOfView!.simdTransform)
+        let newTransformXY = matrix_multiply(simdMatrixY, newTransformX)
+        self.minimapView.pointOfView?.simdTransform = newTransformXY
+        
     }
+    
+    
 }
 
 
