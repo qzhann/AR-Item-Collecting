@@ -10,10 +10,12 @@ import UIKit
 import SceneKit
 import Combine
 import SwiftUI
+import SceneKit.ModelIO
 
 
 protocol TouchDelegate: AnyObject {
-    func touchReceived(at point: CGPoint)
+    func touchDownReceived(at point: CGPoint)
+    func touchUpReceived(at point: CGPoint)
 }
 
 protocol GameDelegate: AnyObject {
@@ -34,7 +36,9 @@ class Level {
     weak var game: Game?
     var levelState: LevelState = .currentSatellite(0) {
         didSet {
-            game?.objectWillChange.send()
+            DispatchQueue.main.async {
+                self.game?.objectWillChange.send()
+            }
             updateSatellitesInScene()
             switch levelState {
             case .completed:
@@ -72,9 +76,12 @@ class Level {
         levelState = .currentSatellite(0)
         
         // add base
-        let baseNode = SCNNode()
-        baseNode.opacity = 0.8
-        let radius: CGFloat = 0.3
+        let sphereScene = SCNScene(named: "art.scnassets/sphere.scn")!
+        let baseNode = sphereScene.rootNode
+        
+//        let baseNode = SCNNode()
+        baseNode.opacity = 0.9
+        let radius: CGFloat = 0.1
         // geometry
         let baseGeometry = SCNSphere(radius: radius)
         baseNode.geometry = baseGeometry
@@ -283,7 +290,7 @@ class Game: LevelCompletionDelegate, ObservableObject {
     weak var gameDelegate: GameDelegate?
         
     init() {
-        self.currentLevel = allLevels[2]
+        self.currentLevel = allLevels[0]
         self.allLevels.forEach{ $0.levelChangeDelegate = self }
         self.allLevels.forEach{ $0.game = self }
     }
@@ -292,8 +299,12 @@ class Game: LevelCompletionDelegate, ObservableObject {
         currentLevel.baseCollidesWithSatellite(satellite)
     }
     
-    func receiveTouch(at point: CGPoint) {
-        touchDelegate?.touchReceived(at: point)
+    func receiveTouchDown(at point: CGPoint) {
+        touchDelegate?.touchDownReceived(at: point)
+    }
+    
+    func receiveTouchUp(at point: CGPoint) {
+        touchDelegate?.touchUpReceived(at: point)
     }
     
     func resetLevel() {

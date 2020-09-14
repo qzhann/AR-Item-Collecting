@@ -19,12 +19,13 @@ struct AROverlay: View {
             .onChanged { (value) in
                 // touch down and drag
                 if self.touchedDown == false {  // first-time touch down
-                    self.game.receiveTouch(at: value.location)
+                    self.game.receiveTouchDown(at: value.location)
                 }
                 self.touchedDown = true
             }
             .onEnded { (value) in
                 // touch up
+                self.game.receiveTouchUp(at: value.location)
                 self.touchedDown = false
             }
     }

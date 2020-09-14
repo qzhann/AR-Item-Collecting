@@ -13,6 +13,8 @@ import SwiftUI
 
 class ViewController: UIViewController, ARSCNViewDelegate {
     
+    var trackedNode: SCNNode?
+    var relativePosition: SCNVector3?
     weak var game: Game!
     var gameNodes: [SCNNode] = []
 
@@ -163,14 +165,53 @@ class ViewController: UIViewController, ARSCNViewDelegate {
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        projectionVectorOf(game.currentLevel.allSatellites[0], onCamera: frame.camera)
+
+        guard let trackedNode = trackedNode else { return }
+        guard trackedNode is SatelliteNode else { self.trackedNode = nil; self.relativePosition = nil; return }
+        guard let cameraNode = sceneView.pointOfView else { return }
+        let updatedTransform = updatedTransformOf(trackedNode, withPosition: SCNVector3(0, 0, -0.3), relativeTo: cameraNode)
+        trackedNode.transform = updatedTransform
     }
+}
+
+func updatedTransformOf(_ node: SCNNode, withPosition position: SCNVector3, relativeTo referenceNode: SCNNode) -> SCNMatrix4 {
+    let referenceNodeTransform = matrix_float4x4(referenceNode.transform)
+
+    // Setup a translation matrix with the desired position
+    var translationMatrix = matrix_identity_float4x4
+    translationMatrix.columns.3.x = position.x
+    translationMatrix.columns.3.y = position.y
+    translationMatrix.columns.3.z = position.z
+
+    // Combine the configured translation matrix with the referenceNode's transform to get the desired position AND orientation
+    let updatedTransform = matrix_multiply(referenceNodeTransform, translationMatrix)
+    return SCNMatrix4(updatedTransform)
 }
 
 // MARK: - Touch controller delegate
 
 extension ViewController: TouchDelegate {
-    func touchReceived(at point: CGPoint) {
+    
+    func touchDownReceived(at point: CGPoint) {
+        let hitTestOptions: [SCNHitTestOption: Any] = [.boundingBoxOnly: true]
+        let hitTestResults = sceneView.hitTest(point, options: hitTestOptions)
+
+        if let firstResult = hitTestResults.first {
+            let node = firstResult.node
+            guard node is SatelliteNode else { return }
+            let updatedTransform = updatedTransformOf(node, withPosition: SCNVector3(0, 0, -0.3), relativeTo: sceneView.pointOfView!)
+            let updatedPosition = SCNVector3(updatedTransform.m41, updatedTransform.m42, updatedTransform.m43)
+
+            let trackAction = SCNAction.move(to: updatedPosition, duration: 0.2)
+            trackAction.timingMode = .easeIn
+            node.runAction(trackAction, completionHandler: {
+                self.trackedNode = node
+            })
+        }
+    }
+    
+    func touchUpReceived(at point: CGPoint) {
+        trackedNode = nil
         let hitTestOptions: [SCNHitTestOption: Any] = [.boundingBoxOnly: true]
         let hitTestResults = sceneView.hitTest(point, options: hitTestOptions)
         
@@ -180,7 +221,7 @@ extension ViewController: TouchDelegate {
         }
         
         // FIXME: Remove this
-        game.currentLevel.correctSatelliteHit()
+//        game.currentLevel.correctSatelliteHit()
     }
 }
 
